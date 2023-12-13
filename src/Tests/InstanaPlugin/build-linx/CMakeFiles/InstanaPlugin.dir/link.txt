@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -g -shared -Wl,-soname,libInstanaPlugin.so -o libInstanaPlugin.so CMakeFiles/InstanaPlugin.dir/stdafx.cpp.o  -l:libdl.so -lstdc++ -lCommon.Lib -lstdc++fs 

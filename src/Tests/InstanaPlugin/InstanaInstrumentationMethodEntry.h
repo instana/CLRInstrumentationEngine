@@ -1,0 +1,253 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
+#pragma once
+
+#include "../../src/InstrumentationEngine.Api/InstrumentationEngine.h"
+#include "../../src/Common.Headers/tstring.h"
+
+struct ILOpcodeInfo
+{
+public:
+    LPCTSTR m_name;    // Display name of the opcode
+    DWORD m_opcodeLength;    // Length of the opcode (1 or 2)
+    DWORD m_operandLength; // Length of the parameter length
+    ILOperandType m_type;  // The type of the operand
+    ILOrdinalOpcode m_alternate;  // The index of the alternate short/long form of the instruction
+    ILOpcodeFlags m_flags;
+    DWORD m_popSlots;             // Number of slots this instruction pops off the instruction graph
+    DWORD m_pushSlots;            // Number of slots this instruction pushes on the instruction graph
+};
+
+enum InstrumentationType
+{
+    InsertBefore,
+    InsertAfter,
+    Replace,
+    Remove,
+    RemoveAll
+};
+
+class InstanaInstrumentInstruction
+{
+private:
+    DWORD m_dwOffset;
+    ILOrdinalOpcode m_opcode;
+    ILOpcodeInfo m_opcodeInfo;
+
+    // only supporting integer operands for the time being.
+    INT64 m_operand;
+
+    InstrumentationType m_instrType;
+
+    DWORD m_dwRepeatCount;
+
+public:
+    InstanaInstrumentInstruction(DWORD dwOffset, ILOrdinalOpcode opcode, ILOpcodeInfo& opcodeInfo, INT64 operand, InstrumentationType instrType, DWORD dwRepeatCount)
+    {
+        m_dwOffset = dwOffset;
+        m_opcode = opcode;
+        m_opcodeInfo = opcodeInfo;
+        m_operand = operand;
+        m_instrType = instrType;
+        m_dwRepeatCount = dwRepeatCount;
+    }
+
+    HRESULT EmitIL(vector<BYTE>& buffer)
+    {
+        if ((m_opcode == ILOrdinalOpcode::Cee_Switch) || (m_opcodeInfo.m_flags == ILOpcodeFlag_Branch))
+        {
+            return E_NOTIMPL;
+        }
+        if (m_opcodeInfo.m_opcodeLength == 2)
+        {
+            buffer.push_back(0xFE);
+        }
+        buffer.push_back((BYTE)m_opcode);
+
+        if (m_opcodeInfo.m_operandLength != 0)
+        {
+            size_t index = buffer.size();
+            buffer.resize(buffer.size() + m_opcodeInfo.m_operandLength);
+#pragma warning(push)
+#pragma warning(disable: 4995) // disable so that memcpy, wmemcpy can be used
+            // This is safe because the buffer has been resized to allow the operand length
+            // to be added.
+            memcpy(&buffer[index], (BYTE*)&m_operand, m_opcodeInfo.m_operandLength);
+#pragma warning(pop)
+
+        }
+        return S_OK;
+    }
+
+    DWORD GetOffset()
+    {
+        return m_dwOffset;
+    }
+
+    ILOrdinalOpcode GetOpcode()
+    {
+        return m_opcode;
+    }
+
+    ILOpcodeInfo GetOpcodeInfo()
+    {
+        return m_opcodeInfo;
+    }
+
+    INT64 GetOperand()
+    {
+        return m_operand;
+    }
+
+    InstrumentationType GetInstrumentationType()
+    {
+        return m_instrType;
+    }
+
+    DWORD GetRepeatCount()
+    {
+        return m_dwRepeatCount;
+    }
+};
+
+class CLocalType
+{
+private:
+    tstring m_typeName;
+public:
+    CLocalType(const tstring& typeName) : m_typeName(typeName)
+    {
+    }
+    const tstring& GetTypeName() const
+    {
+        return m_typeName;
+    }
+};
+
+struct CInstrumentMethodPointTo
+{
+    tstring m_assemblyName;
+    tstring m_typeName;
+    tstring m_methodName;
+};
+
+struct CInjectAssembly
+{
+    tstring m_sourceAssemblyName;
+    tstring m_targetAssemblyName;
+};
+
+
+class InstanaInstrumentMethodEntry
+{
+private:
+    tstring m_strModuleName;
+    tstring m_strMethodName;
+    BOOL m_bIsRejit;
+    BOOL m_isReplacement;
+    BOOL m_bMakeSingleRetFirst;
+    BOOL m_bMakeSingleRetLast;
+    BOOL m_bAddExceptionHandler;
+
+    vector<shared_ptr<InstanaInstrumentInstruction>> m_instructions;
+    vector<COR_IL_MAP> m_baselineMap;
+    vector<CLocalType> m_locals;
+    shared_ptr<CInstrumentMethodPointTo> m_pointTo;
+public:
+    InstanaInstrumentMethodEntry(tstring& strModuleName, tstring& strMethodName, BOOL isRejit, BOOL makeSingleRetFirst, BOOL makeSingleRetLast, BOOL addExceptionHandler)
+        : m_pointTo(nullptr),
+        m_strModuleName(strModuleName),
+        m_strMethodName(strMethodName),
+        m_bIsRejit(isRejit),
+        m_isReplacement(FALSE),
+        m_bMakeSingleRetFirst(makeSingleRetFirst),
+        m_bMakeSingleRetLast(makeSingleRetLast),
+        m_bAddExceptionHandler(addExceptionHandler)
+    {
+    }
+
+    const tstring& GetModuleName()
+    {
+        return m_strModuleName;
+    }
+
+    const tstring& GetMethodName()
+    {
+        return m_strMethodName;
+    }
+
+    BOOL GetIsRejit()
+    {
+        return m_bIsRejit;
+    }
+
+    HRESULT AddLocals(const vector<CLocalType>& locals)
+    {
+        m_locals = locals;
+        return S_OK;
+    }
+
+    HRESULT AddInstrumentInstructions(vector<shared_ptr<InstanaInstrumentInstruction>>& instructions)
+    {
+        m_instructions = instructions;
+        return S_OK;
+    }
+
+    HRESULT AddCorILMap(const vector<COR_IL_MAP>& ilMap)
+    {
+        m_baselineMap = ilMap;
+        return S_OK;
+    }
+
+    void SetPointTo(std::shared_ptr<CInstrumentMethodPointTo>& pointTo)
+    {
+        m_pointTo = pointTo;
+    }
+
+    const vector<COR_IL_MAP>& GetCorILMap()
+    {
+        return m_baselineMap;
+    }
+
+    vector<shared_ptr<InstanaInstrumentInstruction>> GetInstructions()
+    {
+        return m_instructions;
+    }
+
+    const vector<CLocalType>& GetLocals()
+    {
+        return m_locals;
+    }
+
+    void SetReplacement(BOOL isReplacement)
+    {
+        m_isReplacement = isReplacement;
+    }
+
+    BOOL IsReplacement()
+    {
+        return m_isReplacement;
+    }
+
+    BOOL IsSingleRetFirst()
+    {
+        return m_bMakeSingleRetFirst;
+    }
+
+    BOOL IsSingleRetLast()
+    {
+        return m_bMakeSingleRetLast;
+    }
+
+    BOOL IsAddExceptionHandler()
+    {
+        return m_bAddExceptionHandler;
+    }
+
+    std::shared_ptr<CInstrumentMethodPointTo>& GetPointTo()
+    {
+        return m_pointTo;
+    }
+
+};

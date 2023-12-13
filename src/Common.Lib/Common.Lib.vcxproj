@@ -106,6 +106,7 @@
     <ClInclude Include="ImplQueryInterface.h" />
     <ClInclude Include="ModuleHandle.h" />
     <ClInclude Include="ModuleUtils.h" />
+    <ClInclude Include="NewSample.h" />
     <ClInclude Include="PathUtils.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="refcount.h" />
@@ -118,6 +119,7 @@
     <ClCompile Include="ImplQueryInterface.cpp" />
     <ClCompile Include="ModuleHandle.cpp" />
     <ClCompile Include="ModuleUtils.cpp" />
+    <ClCompile Include="NewSample.cpp" />
     <ClCompile Include="PathUtils.cpp" />
     <ClCompile Include="refcount.cpp" />
     <ClCompile Include="stdafx.cpp">

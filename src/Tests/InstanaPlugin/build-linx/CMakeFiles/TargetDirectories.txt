@@ -1,0 +1,3 @@
+/mnt/c/WORKS/repo/clr-tracer/clr-tracer/Rewriter2.0/CLRInstrumentationEngine/src/TESTs/InstanaPlugin/build-linx/CMakeFiles/InstanaPlugin.dir
+/mnt/c/WORKS/repo/clr-tracer/clr-tracer/Rewriter2.0/CLRInstrumentationEngine/src/TESTs/InstanaPlugin/build-linx/CMakeFiles/edit_cache.dir
+/mnt/c/WORKS/repo/clr-tracer/clr-tracer/Rewriter2.0/CLRInstrumentationEngine/src/TESTs/InstanaPlugin/build-linx/CMakeFiles/rebuild_cache.dir
